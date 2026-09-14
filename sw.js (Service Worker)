@@ -30,4 +30,9 @@ self.addEventListener('activate', (e) => {
     )
   );
 });
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('✅ PWA registrado!'))
+    .catch((err) => console.log('⚠️ Erro no PWA:', err));
+}
 

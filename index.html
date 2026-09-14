@@ -1,40 +1,53 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ox Assistant</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
-  body { background:#0f172a; color:#e2e8f0; min-height:100vh; display:flex; flex-direction:column; }
-  header { background:#1e293b; padding:16px; text-align:center; font-size:1.2em; font-weight:bold; }
-  header span { color:#38bdf8; }
-  #chat { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; }
-  .msg { max-width:80%; padding:12px 16px; border-radius:16px; line-height:1.5; }
-  .user { align-self:flex-end; background:#2563eb; border-bottom-right-radius:4px; }
-  .bot  { align-self:flex-start; background:#1e293b; border-bottom-left-radius:4px; }
-  #controls { background:#1e293b; padding:16px; display:flex; gap:10px; justify-content:center; }
-  button { border:none; border-radius:50px; padding:14px 24px; font-size:1em; cursor:pointer; font-weight:bold; }
-  #micBtn { background:#2563eb; color:#fff; }
-  #micBtn.listening { background:#ef4444; animation:pulse 1s infinite; }
-  @keyframes pulse { 50% { opacity:.6; } }
-  #status { text-align:center; padding:8px; color:#94a3b8; font-size:.85em; }
+* { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+body { background:#0f172a; color:#e2e8f0; min-height:100vh; display:flex; flex-direction:column; }
+header { background:#1e293b; padding:16px; text-align:center; font-size:1.2em; font-weight:bold; }
+header span { color:#38bdf8; }
+#chat { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; }
+.msg { max-width:80%; padding:12px 16px; border-radius:16px; line-height:1.5; }
+.user { align-self:flex-end; background:#2563eb; border-bottom-right-radius:4px; }
+.bot { align-self:flex-start; background:#1e293b; border-bottom-left-radius:4px; }
+#controls { background:#1e293b; padding:16px; display:flex; gap:10px; justify-content:center; }
+button { border:none; border-radius:50px; padding:14px 24px; font-size:1em; cursor:pointer; font-weight:bold; }
+#micBtn { background:#2563eb; color:#fff; }
+#micBtn.listening { background:#ef4444; animation:pulse 1s infinite; }
+@keyframes pulse { 50% { opacity:.6; } }
+#status { text-align:center; padding:8px; color:#94a3b8; font-size:.85em; }
 </style>
 </head>
 <body>
-<header>🎙️ <span>Ox Assistant</span> — seu assistente de escritório</header>
+<header>🎙️ <span>Ox Assistant</span></header>
 <div id="chat"></div>
 <div id="status">Toque no microfone e fale</div>
 <div id="controls">
-  <button id="micBtn">🎤 Falar</button>
+<button id="micBtn">🎤 Falar</button>
 </div>
-
 <script>
-const chat = document.getElementById('chat');
+const chat = document.getElementById('');
 const statusEl = document.getElementById('status');
 const micBtn = document.getElementById('micBtn');
 
-// Adiciona mensagem na tela
+// 🔑 Pede a chave 1 vez e salva no navegador (não vai pro GitHub)
+function getApiKey() {
+  let key = localStorage.getItem('ox_key');
+  if (!key) {
+    key = prompt('Cole sua chave OpenRouter (sk-or-...):');
+    localStorage.setItem('ox_key', key);
+  }
+  return key;
+}
+
 function addMsg(text, who) {
   const div = document.createElement('div');
   div.className = 'msg ' + who;
@@ -43,25 +56,22 @@ function addMsg(text, who) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-// 🔊 Fala (TTS nativo navegador — grátis)
 function speak(text) {
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = 'pt-BR';
-  // tenta usar voz feminina pt-BR
   const voices = speechSynthesis.getVoices();
   const ptVoice = voices.find(v => v.lang.startsWith('pt'));
   if (ptVoice) utter.voice = ptVoice;
   speechSynthesis.speak(utter);
 }
 
-// 🎤 Escuta (STT nativo do navegador — grátis)
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRec();
 recognition.lang = 'pt-BR';
 recognition.interimResults = false;
 
 micBtn.addEventListener('click', () => {
-  speechSynthesis.cancel(); // para qualquer fala em andamento
+  speechSynthesis.cancel();
   recognition.start();
   micBtn.classList.add('listening');
   micBtn.textContent = '🔴 Ouvindo...';
@@ -82,19 +92,18 @@ recognition.onend = () => {
   micBtn.textContent = '🎤 Falar';
 };
 
-// 🧠 Envia pro cérebro (Groq — rápido e barato)
 async function sendToAI(userText) {
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer SUA_CHAVE_GROQ_AQUI' // ⚠️ cole sua chave Groq
+        'Authorization': 'Bearer ' + getApiKey()
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'meta-llama/llama-3.3-70b-instruct',
         messages: [
-          { role: 'system', content: 'Você é o Ox Assistant, um assistente de escritório brasileiro. Responda sempre em português, de forma clara, amigável e objetiva, como se estivesse conversando por voz.' },
+          { role: 'system', content: 'Você é o Ox Assistant, assistente de escritório brasileiro. Responda em português, de forma clara e curta, como conversa por voz.' },
           { role: 'user', content: userText }
         ]
       })
@@ -102,19 +111,19 @@ async function sendToAI(userText) {
     const data = await res.json();
     const reply = data.choices[0].message.content;
     addMsg(reply, 'bot');
-    speak(reply); // 🔊 responde falando!
+    speak(reply);
     statusEl.textContent = 'Toque no microfone e fale';
   } catch (err) {
-    addMsg('⚠️ Erro: verifique sua chave de API. (' + err.message + ')', 'bot');
-    statusEl.textContent = 'Erro — verifique a configuração';
+    addMsg('⚠️ Erro de conexão. Tenta de novo!', 'bot');
+    statusEl.textContent = 'Erro';
   }
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('✅ PWA registrado!'))
+    .catch((err) => console.log('⚠️ PWA:', err));
 }
 </script>
 </body>
 </html>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js')
-    .then(() => console.log('✅ PWA registrado!'))
-    .catch((err) => console.log('⚠️ Erro no PWA:', err));
-}
-
